@@ -58,7 +58,6 @@ My technical path has unfolded across three stages, plus one side interest:
 #### Writing
 
 Long-form notes on post-training math, systems engineering, and building from scratch live on **[absllk.com/blog](https://absllk.com/blog/)**:
-Long-form notes on post-training math, building models from scratch, and learning from first principles live on **[absllk.com/blog](https://absllk.com/blog/)**:
 
 <!-- BLOG-POSTS:START -->
 - `2026-11-25` · [当计算后训练损失时，我们到底在算什么？](https://absllk.com/blog/what-post-training-loss-measures) — *从一条曲线重看后训练*
