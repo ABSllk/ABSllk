@@ -1,0 +1,75 @@
+name: Sync blog posts
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update README from RSS feed
+        run: |
+          python3 - <<'PY'
+          import email.utils, re, urllib.request, xml.etree.ElementTree as ET
+
+          RSS_URL = "https://absllk.com/rss.xml"
+          MAX_POSTS = 5
+
+          req = urllib.request.Request(RSS_URL, headers={"User-Agent": "ABSllk-Profile-Sync/1.0"})
+          with urllib.request.urlopen(req, timeout=15) as resp:
+              root = ET.fromstring(resp.read())
+
+          lines = []
+          for item in root.findall("./channel/item")[:MAX_POSTS]:
+              title = (item.findtext("title") or "").strip()
+              link = (item.findtext("link") or "").strip()
+              desc = (item.findtext("description") or "").strip()
+              pub = (item.findtext("pubDate") or "").strip()
+              date_str = ""
+              if pub:
+                  try:
+                      date_str = email.utils.parsedate_to_datetime(pub).strftime("%Y-%m-%d")
+                  except Exception:
+                      pass
+              prefix = f"`{date_str}` · " if date_str else ""
+              suffix = f" — *{desc}*" if desc else ""
+              if title and link:
+                  lines.append(f"- {prefix}[{title}]({link}){suffix}")
+
+          if not lines:
+              raise SystemExit("No posts found in RSS feed; skipping update.")
+
+          with open("README.md", "r", encoding="utf-8") as f:
+              readme = f.read()
+
+          block = "<!-- BLOG-POSTS:START -->\n" + "\n".join(lines) + "\n<!-- BLOG-POSTS:END -->"
+          updated, count = re.subn(
+              r"<!-- BLOG-POSTS:START -->[\s\S]*?<!-- BLOG-POSTS:END -->",
+              block,
+              readme,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("Markers not found in README.md")
+
+          if updated != readme:
+              with open("README.md", "w", encoding="utf-8") as f:
+                  f.write(updated)
+          PY
+
+      - name: Commit and push if changed
+        run: |
+          if [ -n "$(git status --porcelain README.md)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "Sync latest blog posts from RSS"
+            git push
+          fi
